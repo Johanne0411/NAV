@@ -1,0 +1,131 @@
+Koden her viser løsninger til et kaotisk dynamisk system, og derfor viser graferne med løsninger også kaotiske tendenser.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from autograd import jacobian
+
+##### Her begynner koden. ######
+
+Vi vil jobbe med å finne en løsning på intervallet $[0, 50]$ med henholdsvis $100000$ og $100001$ iterasjoner, hvilket gir en steglengde $h \approx 0.000005$
+
+def F(t, p): #p = (x,y,z), t reelt tall i [0,50]. Returnerer F(t, (x, y z)) som gitt i oppgaven
+    return [10 * (p[1] - p[0]), p[0] * (28 - p[2]) - p[1], p[0] * p[1] - (8 / 3) * p[2]]
+
+def ny_t(t_n, h): #Genererer t_n+1 som beskrevet i teksten over. Tar inn parametrene t_n, t-verdien etter n iterasjoner, og h, som er steglengden.
+    return t_n + h
+
+def ny_xyz(t_n, p_n, F, h): #Tar inn t-verdien etter n iterasjoner, (x, y, z) etter n iterasjoner, funksjonen F og h, som er steglengden. Returnerer (x, y, z)_n+1
+    gl_F = F(t_n, p_n) #Beregner F(t_n, (x,y,z)_n)
+    verdi = [p_n[0] + 1/2 * h * gl_F[0], p_n[1] + 1/2 * h * gl_F[1], p_n[2] + 1/2 * h * gl_F[2]] #Regner ut verdien (x, y, z)_n + 1/2*h*F(t_n, (x,y,z)_n)
+    Fverdi = F(t_n + 1/2 * h, verdi) #Beregner F(t_n + 1/2*h, (x, y, z)_n + 1/2*h*F(t_n, (x,y,z)_n))
+    hFverdi = [h * Fverdi[0], h * Fverdi[1], h * Fverdi[2]] #Beregner h*F(t_n + 1/2*h, (x, y, z)_n + 1/2*h*F(t_n, (x,y,z)_n))
+    return [p_n[0] + hFverdi[0], p_n[1] + hFverdi[1], p_n[2] + hFverdi[2]] #Returnerer (x,y,z)_n + h*F(t_n + 1/2*h, (x, y, z)_n + 1/2*h*F(t_n, (x,y,z)_n))
+
+def solu(initVal, noIt, intStart, intSlutt): #Returnerer ei liste med alle t_n verdier og (x,y,z)_n verdier beregnet ved hjelp av de to funksjonene over, hvor n er antall iterasjoner. Tar inn parametrene initialverdi for (x, y, z), antall iterasjoner og start- og sluttverdien for intervallet hvor Lorenzsystemet skal løses.
+    t_gl = intStart #Gammel t-verdi settes til t_0 = startverdien for intervallet
+    xyz_gl = initVal #Gammel (x, y, z)-verdi settes til (x, y, z)_0 = initialverdien
+    t_ns = [intStart] #Lagrer t_0 i liste av t-verdier
+    xyz_ns = [initVal] #Lagrer (x, y, z)_0 i liste av (x, y, z)-verdier
+    
+    t_ny = t_gl #Oppretter variablen t_ny, som skal brukes til å iterere
+    xyz_ny = xyz_gl #Oppretter variablen xyz_ny, som skal brukes til å iterere
+    
+    h = (intSlutt - intStart) / noIt #Beregner steglengde
+    
+    for i in range(noIt): #Beregner t_i og (x, y, z)_i for i = 0, 2, ..., n - 1
+        t_ny = ny_t(t_gl, h) #t_ny = t_i+1
+        xyz_ny = ny_xyz(t_gl, xyz_gl, F, h) #xyz_ny = (x, y, z)_i+1
+        
+        t_ns.append(t_ny) #Legger til t_i+1 i liste av t-verdier
+        xyz_ns.append(xyz_ny) #Legger til (x, y, z)_i+1 i liste av (x, y, z)_i+1
+        
+        t_gl = t_ny #Oppdaterer t_gl til neste iterasjon
+        xyz_gl = xyz_ny #Oppdaterer xyz_gl til neste iterasjon
+    
+    return [t_ns, xyz_ns] #Returnerer liste med t_i og (x, y, z)_i for i = 0, 1, ..., n
+
+def solu_1variable(solu): #Funksjonen endrer formatet på løsningen gitt i formatet over, så vi kan plotte x, y og z som løsninger hver for seg. Derfor returnerer funksjonen ei liste med t_i, x_i, y_i, z_i og tar inn parameteret solu som er på formen [t_i, (x, y, z)_i] for i = 0, 1, ..., n - 1
+    solu_t = solu[0] #Lagrer t-verdiene fra solu, da der ikke skal gjøres noe med dem.
+    solu_x = [] #Oppretter tom liste til alle x_i verdier for i = 0, 1, ..., n
+    solu_y = [] #Oppretter tom liste til alle y_i verdier for i = 0, 1, ..., n
+    solu_z = [] #Oppretter tom liste til alle z_i verdier for i = 0, 1, ..., n
+    
+    lengde = len(solu[1]) #Antall verdier som skal flyttes over i nye lister
+    
+    for i in range(lengde): #Itererer gjennom alle verdier som skal flyttes
+        solu_x.append(solu[1][i][0]) #Legger til x_i i liste
+        solu_y.append(solu[1][i][1]) #Legger til y_i i liste
+        solu_z.append(solu[1][i][2]) #Legger til z_i i liste
+        
+    return[solu_t, solu_x, solu_y, solu_z] #Returnerer de fire lister med t_i, x_i, y_i og z_i for i = 0, 1, ..., n
+    
+    initVal1 = [1, 0, 0] #Initialverdi
+intStart = 0 #Intervalstart for t-verdier
+intSlutt = 50 #Intvervalslutt for t-verdier
+noIt11 = 100000 #Antall iterasjoner
+
+losning11 = solu(initVal1, noIt11, intStart, intSlutt) 
+losning111 = solu_1variable(losning11) #Losningene t_i, x_i, y_i, z_i for i = 0, ..., 100000
+
+noIt12 = 100001 #Antall iterasjoner
+losning12 = solu(initVal1, noIt12, intStart, intSlutt)
+losning112 = solu_1variable(losning12) #Losningene t_i, x_i, y_i, z_i for i = 0, ..., 100001
+
+
+
+plt.plot(losning111[0], losning111[1], label = "100000 iterasjoner") #Plotter t_i og x_i med 100000 iterasjoner
+plt.plot(losning112[0], losning112[1], label = "100001 iterasjoner") #Plotter t_i og x_i med 100001 iterasjoner
+plt.title("$x(t)$ med initialverdi $(1, 0, 0)$")
+plt.xlabel("$t$")
+plt.ylabel("$x$")
+plt.legend()
+plt.show()
+
+plt.plot(losning111[0], losning111[2], label = "100000 iterasjoner") #Plotter t_i og y_i med 100000 iterasjoner
+plt.plot(losning112[0], losning112[2], label = "100001 iterasjoner") #Plotter t_i og y_i med 100001 iterasjoner
+plt.title("$y(t)$ med initialverdi $(1, 0, 0)$")
+plt.xlabel("$t$")
+plt.ylabel("$y$")
+plt.legend()
+plt.show()
+
+plt.plot(losning111[0], losning111[3], label = "100000 iterasjoner") #Plotter t_i og z_i med 100000 iterasjoner
+plt.plot(losning112[0], losning112[3], label = "100001 iterasjoner") #Plotter t_i og z_i med 100001 iterasjoner
+plt.title("$z(t)$ med initialverdi $(1, 0, 0)$")
+plt.xlabel("$t$")
+plt.ylabel("$z$")
+plt.legend()
+plt.show()
+
+
+initVal2 = [1, 0.0001, 0] #Initialverdi
+intStart = 0 #Intervalstart for t-verdier
+intSlutt = 50 #Intvervalslutt for t-verdier
+noIt21 = 100000 #Antall iterasjoner
+
+losning21 = solu(initVal2, noIt21, intStart, intSlutt) 
+losning121 = solu_1variable(losning21) #Losningene t_i, x_i, y_i, z_i for i = 0, ..., 100000
+
+plt.plot(losning121[0], losning121[1], label = "Initialverdi (1, 0.0001, 0)") #Plotter t_i og x_i med initialverdi (1, 0.001, 0) og 100000 iterasjoner
+plt.plot(losning111[0], losning111[1], label = "Initialverdi (1, 0, 0)") #Plotter t_i og x_i med initialverdi (1, 0, 0) med 100000 iterasjoner
+plt.title("$x(t)$ med 100000 iterasjoner")
+plt.xlabel("$t$")
+plt.ylabel("$x$")
+plt.legend()
+plt.show()
+
+plt.plot(losning121[0], losning121[2], label = "Initialverdi (1, 0.0001, 0)") #Plotter t_i og x_i med initialverdi (1, 0.001, 0) og 100000 iterasjoner
+plt.plot(losning111[0], losning111[2], label = "Initialverdi (1, 0, 0)") #Plotter t_i og y_i med initialverdi (1, 0, 0) med 100000 iterasjoner
+plt.title("$y(t)$ med 100000 iterasjoner")
+plt.xlabel("$t$")
+plt.ylabel("$y$")
+plt.legend()
+plt.show()
+
+plt.plot(losning121[0], losning121[3], label = "Initialverdi (1, 0.0001, 0)") #Plotter t_i og x_i med initialverdi (1, 0.001, 0) og 100000 iterasjoner
+plt.plot(losning111[0], losning111[3], label = "Initialverdi (1, 0, 0)") #Plotter t_i og x_i med initialverdi (1, 0, 0) med 100000 iterasjoner
+plt.title("$z(t)$ med 100000 iterasjoner")
+plt.xlabel("$t$")
+plt.ylabel("$z$")
+plt.legend()
+plt.show()
